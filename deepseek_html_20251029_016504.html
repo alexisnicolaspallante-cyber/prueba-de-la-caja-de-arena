@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caja de Arena Digital - Terreno Avanzado</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #2c3e50;
+        }
+        #container { 
+            position: relative; 
+            width: 100vw; 
+            height: 100vh; 
+        }
+        #ui {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(40, 44, 52, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            z-index: 100;
+            min-width: 320px;
+            color: white;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .tool-section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #61dafb;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .tool-palette {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .tool-btn {
+            padding: 12px 8px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #34495e;
+            color: #ecf0f1;
+            font-size: 11px;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .tool-btn:hover {
+            background: #416180;
+            transform: translateY(-2px);
+        }
+        .tool-btn.active {
+            background: #3498db;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+        }
+        .texture-palette {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+        .texture-btn {
+            padding: 10px 5px;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 10px;
+            background: #2c3e50;
+            color: #bdc3c7;
+            transition: all 0.2s ease;
+        }
+        .texture-btn.active {
+            border-color: #e74c3c;
+            background: #34495e;
+            color: #ecf0f1;
+        }
+        .brush-controls {
+            background: rgba(52, 73, 94, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        .control-group {
+            margin-bottom: 12px;
+        }
+        .control-group label {
+            font-size: 12px;
+            display: block;
+            margin-bottom: 6px;
+            color: #95a5a6;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #34495e;
+            outline: none;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #34495e;
+            background: #2c3e50;
+            color: white;
+        }
+        .value-display {
+            font-size: 11px;
+            color: #3498db;
+            font-weight: bold;
+        }
+        .water-level-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #water-level-visual {
+            width: 100px;
+            height: 20px;
+            background: linear-gradient(to top, #1e5799, #2989d8, #207cca);
+            border-radius: 10px;
+            position: relative;
+        }
+        /* Estilos para el panel de objetos */
+        .categories-palette {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .category-btn {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #34495e;
+            color: #ecf0f1;
+            font-size: 10px;
+            transition: all 0.2s ease;
+        }
+        .category-btn.active {
+            background: #e74c3c;
+        }
+        .objects-palette {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .obj-btn {
+            padding: 8px 5px;
+            border: 1px solid #34495e;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 10px;
+            background: #2c3e50;
+            color: #bdc3c7;
+            transition: all 0.2s ease;
+        }
+        .obj-btn:hover {
+            background: #34495e;
+            border-color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="ui">
+        <h3 style="margin-top: 0; color: #ecf0f1;">🏖️ Editor de Terreno Avanzado</h3>
+        
+        <!-- HERRAMIENTAS PRINCIPALES -->
+        <div class="tool-section">
+            <div class="section-title">Herramientas de Moldeado</div>
+            <div class="tool-palette">
+                <button class="tool-btn active" data-tool="raise">
+                    <span style="font-size: 16px;">⛰️</span>
+                    Elevar
+                </button>
+                <button class="tool-btn" data-tool="lower">
+                    <span style="font-size: 16px;">🕳️</span>
+                    Excavar
+                </button>
+                <button class="tool-btn" data-tool="smooth">
+                    <span style="font-size: 16px;">🔧</span>
+                    Suavizar
+                </button>
+                <button class="tool-btn" data-tool="plateau">
+                    <span style="font-size: 16px;">🏔️</span>
+                    Meseta
+                </button>
+                <button class="tool-btn" data-tool="valley">
+                    <span style="font-size: 16px;">🏞️</span>
+                    Valle
+                </button>
+                <button class="tool-btn" data-tool="flatten">
+                    <span style="font-size: 16px;">📏</span>
+                    Nivelar
+                </button>
+            </div>
+        </div>
+
+        <!-- HERRAMIENTAS DE PINTURA -->
+        <div class="tool-section">
+            <div class="section-title">Pinceles de Textura</div>
+            <div class="tool-palette">
+                <button class="tool-btn" data-tool="paint">
+                    <span style="font-size: 16px;">🎨</span>
+                    Pintar
+                </button>
+                <button class="tool-btn" data-tool="water">
+                    <span style="font-size: 16px;">💧</span>
+                    Agua
+                </button>
+                <button class="tool-btn" data-tool="erase">
+                    <span style="font-size: 16px;">🧹</span>
+                    Borrar
+                </button>
+                <button class="tool-btn" data-tool="object">
+                    <span style="font-size: 16px;">📦</span>
+                    Objetos
+                </button>
+            </div>
+        </div>
+
+        <!-- TEXTURAS DISPONIBLES -->
+        <div class="tool-section">
+            <div class="section-title">Texturas del Terreno</div>
+            <div class="texture-palette" id="texture-palette">
+                <!-- Texturas se cargarán dinámicamente -->
+            </div>
+        </div>
+
+        <!-- CONTROLES DEL PINCEL -->
+        <div class="brush-controls">
+            <div class="control-group">
+                <label>Tamaño del Pincel: <span class="value-display" id="brush-size-value">8</span></label>
+                <input type="range" id="brush-size" min="1" max="30" value="8">
+            </div>
+            
+            <div class="control-group">
+                <label>Intensidad: <span class="value-display" id="brush-intensity-value">5</span></label>
+                <input type="range" id="brush-intensity" min="1" max="10" value="5">
+            </div>
+
+            <div class="control-group">
+                <label>Forma del Pincel:</label>
+                <select id="brush-shape">
+                    <option value="circle">Círculo Suave</option>
+                    <option value="hard-circle">Círculo Duro</option>
+                    <option value="square">Cuadrado</option>
+                    <option value="star">Estrella</option>
+                    <option value="line">Línea</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- CONTROL DE AGUA -->
+        <div class="tool-section">
+            <div class="section-title">Sistema de Agua</div>
+            <div class="control-group">
+                <div class="water-level-indicator">
+                    <label>Nivel de Agua:</label>
+                    <div id="water-level-visual"></div>
+                    <span class="value-display" id="water-level-value">0.0</span>
+                </div>
+                <input type="range" id="water-level" min="-10" max="10" step="0.5" value="0">
+            </div>
+        </div>
+
+        <!-- PANEL DE OBJETOS -->
+        <div class="tool-section">
+            <div class="section-title">Objetos y Figuras</div>
+            <div class="categories-palette">
+                <button class="category-btn active" data-category="animals">Animales</button>
+                <button class="category-btn" data-category="people">Personas</button>
+                <button class="category-btn" data-category="professions">Profesiones</button>
+                <button class="category-btn" data-category="structures">Estructuras</button>
+                <button class="category-btn" data-category="nature">Naturaleza</button>
+            </div>
+            <div id="objects-palette" class="objects-palette">
+                <!-- Objetos se cargarán dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // SISTEMA AVANZADO DE TERRENO CON OBJETOS
+        class AdvancedTerrainEditor {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                
+                // Configuración avanzada del terreno
+                this.terrainSize = 100;
+                this.terrainResolution = 256;
+                this.waterLevel = 0;
+                this.autoWaterReveal = true;
+                
+                this.setupScene();
+                this.createAdvancedTerrain();
+                this.setupWaterSystem();
+                this.setupObjectsSystem();
+                this.setupControls();
+                this.loadTexturesLibrary();
+                this.loadObjectsLibrary();
+                this.setupEventListeners();
+                
+                // Estado avanzado
+                this.currentTool = 'raise';
+                this.currentTexture = 'sand';
+                this.brushSize = 8;
+                this.brushIntensity = 5;
+                this.brushShape = 'circle';
+                this.terrainHistory = [];
+                
+                // Estado de objetos
+                this.currentObject = null;
+                this.objectPreview = null;
+                this.selectedObject = null;
+                this.currentCategory = 'animals';
+                
+                this.animate();
+            }
+
+            setupScene() {
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x1a1a2e);
+                document.getElementById('container').appendChild(this.renderer.domElement);
+
+                // Cámara con controles mejorados
+                this.camera.position.set(30, 25, 30);
+                this.camera.lookAt(0, 0, 0);
+
+                // Sistema de iluminación avanzado
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(50, 50, 25);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+
+                // Luz de relleno
+                const fillLight = new THREE.DirectionalLight(0x667788, 0.3);
+                fillLight.position.set(-25, 25, -25);
+                this.scene.add(fillLight);
+            }
+
+            createAdvancedTerrain() {
+                // Geometría de alta resolución
+                this.terrainGeometry = new THREE.PlaneGeometry(
+                    this.terrainSize, 
+                    this.terrainSize, 
+                    this.terrainResolution, 
+                    this.terrainResolution
+                );
+                this.terrainGeometry.rotateX(-Math.PI / 2);
+                
+                // Material avanzado con múltiples texturas
+                const terrainMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0xd2b48c,
+                    wireframe: false,
+                    flatShading: false
+                });
+
+                this.terrain = new THREE.Mesh(this.terrainGeometry, terrainMaterial);
+                this.terrain.name = "terrain";
+                this.terrain.receiveShadow = true;
+                this.scene.add(this.terrain);
+
+                // Sistemas de datos del terreno
+                this.initializeTerrainData();
+            }
+
+            initializeTerrainData() {
+                // Mapas de datos para el terreno
+                this.heightMap = new Float32Array(this.terrainResolution * this.terrainResolution);
+                this.textureMap = new Array(this.terrainResolution * this.terrainResolution).fill('sand');
+                this.moistureMap = new Float32Array(this.terrainResolution * this.terrainResolution);
+                
+                this.terrainVertices = this.terrainGeometry.attributes.position.array;
+                this.terrainColors = new Float32Array(this.terrainResolution * this.terrainResolution * 3);
+                
+                // Inicializar colores base (arena)
+                for (let i = 0; i < this.terrainColors.length; i += 3) {
+                    this.terrainColors[i] = 0.82;     // R
+                    this.terrainColors[i + 1] = 0.71; // G
+                    this.terrainColors[i + 2] = 0.55; // B
+                }
+                
+                this.terrainGeometry.setAttribute('color', new THREE.BufferAttribute(this.terrainColors, 3));
+                this.terrain.material.vertexColors = true;
+            }
+
+            setupWaterSystem() {
+                // Sistema de agua avanzado
+                const waterGeometry = new THREE.PlaneGeometry(this.terrainSize, this.terrainSize);
+                waterGeometry.rotateX(-Math.PI / 2);
+                
+                const waterMaterial = new THREE.MeshPhysicalMaterial({ 
+                    color: 0x0077be,
+                    transparent: true,
+                    opacity: 0.8,
+                    transmission: 0.2,
+                    roughness: 0.1,
+                    metalness: 0.1
+                });
+                
+                this.water = new THREE.Mesh(waterGeometry, waterMaterial);
+                this.water.position.y = this.waterLevel;
+                this.water.name = "water";
+                
+                this.scene.add(this.water);
+
+                // Partículas de agua para efectos
+                this.waterParticles = new THREE.Group();
+                this.scene.add(this.waterParticles);
+            }
+
+            setupObjectsSystem() {
+                // Grupo para todos los objetos colocados
+                this.objectsGroup = new THREE.Group();
+                this.scene.add(this.objectsGroup);
+            }
+
+            setupControls() {
+                this.mouse = new THREE.Vector2();
+                this.raycaster = new THREE.Raycaster();
+                this.isMouseDown = false;
+                this.lastMousePoint = null;
+                
+                // Controles de ratón mejorados
+                this.renderer.domElement.addEventListener('mousedown', (e) => {
+                    this.isMouseDown = true;
+                    this.handleMouseAction(e);
+                });
+
+                this.renderer.domElement.addEventListener('mousemove', (e) => {
+                    this.updateObjectPreview(e);
+                    if (this.isMouseDown) {
+                        this.handleMouseAction(e);
+                    }
+                    this.lastMousePoint = this.mouse.clone();
+                });
+
+                this.renderer.domElement.addEventListener('mouseup', () => {
+                    this.isMouseDown = false;
+                    this.lastMousePoint = null;
+                });
+
+                // Controles de teclado para herramientas rápidas
+                document.addEventListener('keydown', (e) => {
+                    switch(e.key) {
+                        case '1': this.setTool('raise'); break;
+                        case '2': this.setTool('lower'); break;
+                        case '3': this.setTool('paint'); break;
+                        case '4': this.setTool('water'); break;
+                        case '5': this.setTool('object'); break;
+                        case 'r': case 'R': this.rotateSelectedObject(); break;
+                        case 'Delete': this.removeSelectedObject(); break;
+                        case ' ': this.toggleWaterReveal(); break;
+                    }
+                });
+            }
+
+            setTool(tool) {
+                this.currentTool = tool;
+                this.updateActiveTool();
+                
+                // Si no es la herramienta de objetos, quitar previsualización
+                if (tool !== 'object') {
+                    this.removeObjectPreview();
+                }
+            }
+
+            toggleWaterReveal() {
+                this.autoWaterReveal = !this.autoWaterReveal;
+                console.log('Revelado automático de agua:', this.autoWaterReveal);
+            }
+
+            handleMouseAction(event) {
+                this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObject(this.terrain);
+                
+                if (intersects.length > 0) {
+                    const point = intersects[0].point;
+                    
+                    switch(this.currentTool) {
+                        case 'raise':
+                            this.modifyTerrainHeight(point, this.brushIntensity * 0.15);
+                            break;
+                        case 'lower':
+                            this.modifyTerrainHeight(point, -this.brushIntensity * 0.15);
+                            break;
+                        case 'smooth':
+                            this.smoothTerrain(point);
+                            break;
+                        case 'plateau':
+                            this.createPlateau(point);
+                            break;
+                        case 'valley':
+                            this.createValley(point);
+                            break;
+                        case 'flatten':
+                            this.flattenTerrain(point);
+                            break;
+                        case 'paint':
+                            this.paintTerrain(point, this.currentTexture);
+                            break;
+                        case 'water':
+                            this.addWaterSpring(point);
+                            break;
+                        case 'erase':
+                            this.eraseTextures(point);
+                            break;
+                        case 'object':
+                            this.placeObject(point);
+                            break;
+                    }
+                }
+            }
+
+            updateObjectPreview(event) {
+                if (this.currentTool !== 'object' || !this.currentObject) {
+                    return;
+                }
+
+                this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObject(this.terrain);
+                
+                if (intersects.length > 0) {
+                    const point = intersects[0].point;
+                    if (!this.objectPreview) {
+                        this.createObjectPreview(this.currentObject);
+                    }
+                    this.objectPreview.position.copy(point);
+                    this.objectPreview.position.y += 0.5; // Levantar un poco para que no se entierre
+                }
+            }
+
+            createObjectPreview(objectType) {
+                this.removeObjectPreview();
+                const preview = this.createObject(objectType);
+                preview.material.transparent = true;
+                preview.material.opacity = 0.7;
+                this.objectPreview = preview;
+                this.scene.add(this.objectPreview);
+            }
+
+            removeObjectPreview() {
+                if (this.objectPreview) {
+                    this.scene.remove(this.objectPreview);
+                    this.objectPreview = null;
+                }
+            }
+
+            placeObject(position) {
+                if (!this.currentObject) return;
+
+                const object = this.createObject(this.currentObject);
+                object.position.copy(position);
+                object.userData = { type: this.currentObject };
+                this.objectsGroup.add(object);
+                this.selectObject(object);
+            }
+
+            createObject(objectType) {
+                let object;
+                const color = this.getObjectColor(objectType);
+                
+                switch(objectType) {
+                    case 'lion':
+                        object = this.createAnimalModel(color, 1.0);
+                        break;
+                    case 'elephant':
+                        object = this.createAnimalModel(color, 1.5);
+                        break;
+                    case 'bird':
+                        object = this.createAnimalModel(color, 0.5);
+                        break;
+                    case 'child':
+                        object = this.createPersonModel(color, 0.8);
+                        break;
+                    case 'adult':
+                        object = this.createPersonModel(color, 1.0);
+                        break;
+                    case 'elder':
+                        object = this.createPersonModel(color, 0.9);
+                        break;
+                    case 'doctor':
+                        object = this.createProfessionModel(color, 'plus');
+                        break;
+                    case 'firefighter':
+                        object = this.createProfessionModel(color, 'helmet');
+                        break;
+                    case 'police':
+                        object = this.createProfessionModel(color, 'badge');
+                        break;
+                    case 'house':
+                        object = this.createStructureModel(color, 'house');
+                        break;
+                    case 'castle':
+                        object = this.createStructureModel(color, 'castle');
+                        break;
+                    case 'bridge':
+                        object = this.createStructureModel(color, 'bridge');
+                        break;
+                    case 'tree':
+                        object = this.createNatureModel(color, 'tree');
+                        break;
+                    case 'rock':
+                        object = this.createNatureModel(color, 'rock');
+                        break;
+                    case 'flower':
+                        object = this.createNatureModel(color, 'flower');
+                        break;
+                    default:
+                        object = this.createBasicModel(color);
+                }
+                
+                object.userData = { type: objectType };
+                return object;
+            }
+
+            createAnimalModel(color, scale) {
+                const group = new THREE.Group();
+                
+                // Cuerpo
+                const bodyGeometry = new THREE.SphereGeometry(0.5 * scale, 8, 8);
+                const bodyMaterial = new THREE.MeshLambertMaterial({ color });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                group.add(body);
+                
+                // Cabeza
+                const headGeometry = new THREE.SphereGeometry(0.3 * scale, 8, 8);
+                const headMaterial = new THREE.MeshLambertMaterial({ color });
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.set(0, 0, 0.6 * scale);
+                group.add(head);
+                
+                return group;
+            }
+
+            createPersonModel(color, scale) {
+                const group = new THREE.Group();
+                
+                // Cuerpo
+                const bodyGeometry = new THREE.CylinderGeometry(0.2 * scale, 0.2 * scale, 0.8 * scale, 8);
+                const bodyMaterial = new THREE.MeshLambertMaterial({ color });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.position.y = 0.4 * scale;
+                group.add(body);
+                
+                // Cabeza
+                const headGeometry = new THREE.SphereGeometry(0.25 * scale, 8, 8);
+                const headMaterial = new THREE.MeshLambertMaterial({ color: 0xFFEBCD });
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.y = 1.0 * scale;
+                group.add(head);
+                
+                return group;
+            }
+
+            createProfessionModel(color, type) {
+                const group = new THREE.Group();
+                
+                // Base de persona
+                const person = this.createPersonModel(color, 1.0);
+                group.add(person);
+                
+                // Accesorio según profesión
+                let accessoryGeometry;
+                switch(type) {
+                    case 'plus':
+                        accessoryGeometry = new THREE.BoxGeometry(0.1, 0.4, 0.1);
+                        break;
+                    case 'helmet':
+                        accessoryGeometry = new THREE.ConeGeometry(0.3, 0.3, 8);
+                        break;
+                    case 'badge':
+                        accessoryGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 8);
+                        break;
+                }
+                
+                const accessoryMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFF00 });
+                const accessory = new THREE.Mesh(accessoryGeometry, accessoryMaterial);
+                accessory.position.y = 1.2;
+                group.add(accessory);
+                
+                return group;
+            }
+
+            createStructureModel(color, type) {
+                const group = new THREE.Group();
+                
+                switch(type) {
+                    case 'house':
+                        // Base de la casa
+                        const houseGeometry = new THREE.BoxGeometry(2, 1.5, 2);
+                        const houseMaterial = new THREE.MeshLambertMaterial({ color });
+                        const house = new THREE.Mesh(houseGeometry, houseMaterial);
+                        house.position.y = 0.75;
+                        group.add(house);
+                        
+                        // Techo
+                        const roofGeometry = new THREE.ConeGeometry(1.5, 1, 4);
+                        const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                        const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+                        roof.position.y = 2;
+                        roof.rotation.y = Math.PI / 4;
+                        group.add(roof);
+                        break;
+                        
+                    case 'castle':
+                        // Torre principal
+                        const towerGeometry = new THREE.CylinderGeometry(0.8, 0.8, 3, 8);
+                        const towerMaterial = new THREE.MeshLambertMaterial({ color });
+                        const tower = new THREE.Mesh(towerGeometry, towerMaterial);
+                        tower.position.y = 1.5;
+                        group.add(tower);
+                        
+                        // Almenas
+                        const battlementsGeometry = new THREE.CylinderGeometry(1, 1, 0.5, 4);
+                        const battlementsMaterial = new THREE.MeshLambertMaterial({ color: 0x666666 });
+                        const battlements = new THREE.Mesh(battlementsGeometry, battlementsMaterial);
+                        battlements.position.y = 2.75;
+                        group.add(battlements);
+                        break;
+                        
+                    case 'bridge':
+                        // Base del puente
+                        const bridgeGeometry = new THREE.BoxGeometry(4, 0.3, 1);
+                        const bridgeMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                        const bridge = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
+                        bridge.position.y = 0.15;
+                        group.add(bridge);
+                        
+                        // Soporte
+                        const supportGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+                        const supportMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+                        const support1 = new THREE.Mesh(supportGeometry, supportMaterial);
+                        support1.position.set(-1.5, -0.5, 0);
+                        const support2 = new THREE.Mesh(supportGeometry, supportMaterial);
+                        support2.position.set(1.5, -0.5, 0);
+                        group.add(support1);
+                        group.add(support2);
+                        break;
+                }
+                
+                return group;
+            }
+
+            createNatureModel(color, type) {
+                const group = new THREE.Group();
+                
+                switch(type) {
+                    case 'tree':
+                        // Tronco
+                        const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 2, 8);
+                        const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                        group.add(trunk);
+                        
+                        // Copa
+                        const leavesGeometry = new THREE.SphereGeometry(1.2, 8, 6);
+                        const leavesMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+                        const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+                        leaves.position.y = 1.8;
+                        group.add(leaves);
+                        break;
+                        
+                    case 'rock':
+                        const rockGeometry = new THREE.DodecahedronGeometry(0.5, 1);
+                        const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+                        const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+                        group.add(rock);
+                        break;
+                        
+                    case 'flower':
+                        // Tallo
+                        const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 8);
+                        const stemMaterial = new THREE.MeshLambertMaterial({ color: 0x00FF00 });
+                        const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                        stem.position.y = 0.4;
+                        group.add(stem);
+                        
+                        // Flor
+                        const flowerGeometry = new THREE.SphereGeometry(0.3, 8, 6);
+                        const flowerMaterial = new THREE.MeshLambertMaterial({ color: 0xFF69B4 });
+                        const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
+                        flower.position.y = 0.9;
+                        group.add(flower);
+                        break;
+                }
+                
+                return group;
+            }
+
+            createBasicModel(color) {
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+                const material = new THREE.MeshLambertMaterial({ color });
+                return new THREE.Mesh(geometry, material);
+            }
+
+            getObjectColor(objectType) {
+                const colorMap = {
+                    // Animales
+                    'lion': 0xFFA500,
+                    'elephant': 0x808080,
+                    'bird': 0xADD8E6,
+                    // Personas
+                    'child': 0xFF69B4,
+                    'adult': 0x4169E1,
+                    'elder': 0x708090,
+                    // Profesiones
+                    'doctor': 0xFFFFFF,
+                    'firefighter': 0xFF4500,
+                    'police': 0x0000FF,
+                    // Estructuras
+                    'house': 0xDEB887,
+                    'castle': 0xC0C0C0,
+                    'bridge': 0x8B4513,
+                    // Naturaleza
+                    'tree': 0x228B22,
+                    'rock': 0x696969,
+                    'flower': 0xFF69B4
+                };
+                return colorMap[objectType] || 0xFFFFFF;
+            }
+
+            selectObject(object) {
+                // Deseleccionar anterior
+                if (this.selectedObject) {
+                    this.selectedObject.material.emissive.setHex(this.selectedObject.userData.originalEmissive || 0x000000);
+                }
+                this.selectedObject = object;
+                if (object) {
+                    object.userData.originalEmissive = object.material.emissive.getHex();
+                    object.material.emissive.setHex(0x888888);
+                }
+            }
+
+            removeSelectedObject() {
+                if (this.selectedObject) {
+                    this.objectsGroup.remove(this.selectedObject);
+                    this.selectedObject = null;
+                }
+            }
+
+            rotateSelectedObject() {
+                if (this.selectedObject) {
+                    this.selectedObject.rotation.y += Math.PI / 4;
+                }
+            }
+
+            modifyTerrainHeight(centerPoint, intensity) {
+                const vertices = this.terrainVertices;
+                const resolution = this.terrainResolution;
+                const size = this.terrainSize;
+                const halfSize = size / 2;
+                
+                for (let i = 0; i < vertices.length; i += 3) {
+                    const x = vertices[i];
+                    const z = vertices[i + 2];
+                    
+                    const gridX = Math.floor((x + halfSize) / size * resolution);
+                    const gridZ = Math.floor((z + halfSize) / size * resolution);
+                    const index = gridZ * resolution + gridX;
+                    
+                    if (index >= 0 && index < resolution * resolution) {
+                        const distance = this.calculateBrushDistance(x, z, centerPoint);
+                        const influence = this.calculateBrushInfluence(distance, this.brushSize);
+                        
+                        if (influence > 0) {
+                            // Modificar altura
+                            vertices[i + 1] += intensity * influence;
+                            this.heightMap[index] = vertices[i + 1];
+                            
+                            // Revelar agua si se excava por debajo del nivel
+                            if (this.autoWaterReveal && vertices[i + 1] < this.waterLevel) {
+                                this.revealWaterAtPoint(x, z, vertices[i + 1]);
+                            }
+                        }
+                    }
+                }
+                
+                this.terrainGeometry.attributes.position.needsUpdate = true;
+                this.terrainGeometry.computeVertexNormals();
+            }
+
+            calculateBrushDistance(x, z, centerPoint) {
+                const dx = x - centerPoint.x;
+                const dz = z - centerPoint.z;
+                
+                switch(this.brushShape) {
+                    case 'circle':
+                        return Math.sqrt(dx * dx + dz * dz);
+                    case 'hard-circle':
+                        return Math.sqrt(dx * dx + dz * dz);
+                    case 'square':
+                        return Math.max(Math.abs(dx), Math.abs(dz));
+                    case 'star':
+                        const angle = Math.atan2(dz, dx);
+                        const starDistance = Math.sqrt(dx * dx + dz * dz);
+                        const starFactor = 1 + 0.3 * Math.sin(5 * angle);
+                        return starDistance / starFactor;
+                    case 'line':
+                        if (!this.lastMousePoint) return Number.MAX_VALUE;
+                        const lineStart = this.lastMousePoint;
+                        const lineEnd = this.mouse;
+                        // Implementar distancia a línea - simplificado por ahora
+                        return Math.sqrt(dx * dx + dz * dz);
+                    default:
+                        return Math.sqrt(dx * dx + dz * dz);
+                }
+            }
+
+            calculateBrushInfluence(distance, size) {
+                if (distance > size) return 0;
+                
+                switch(this.brushShape) {
+                    case 'circle':
+                        return Math.pow(1 - (distance / size), 2);
+                    case 'hard-circle':
+                        return 1 - (distance / size);
+                    case 'square':
+                        return 1 - (distance / size);
+                    case 'star':
+                        return Math.pow(1 - (distance / size), 1.5);
+                    case 'line':
+                        return 1 - (distance / size);
+                    default:
+                        return 1 - (distance / size);
+                }
+            }
+
+            smoothTerrain(centerPoint) {
+                const vertices = this.terrainVertices;
+                const resolution = this.terrainResolution;
+                const size = this.terrainSize;
+                const halfSize = size / 2;
+                
+                // Aplicar filtro de suavizado gaussiano
+                for (let i = 0; i < vertices.length; i += 3) {
+                    const x = vertices[i];
+                    const z = vertices[i + 2];
+                    
+                    const distance = this.calculateBrushDistance(x, z, centerPoint);
+                    if (distance < this.brushSize) {
+                        const influence = this.calculateBrushInfluence(distance, this.brushSize) * 0.3;
+                        
+                        // Suavizado simple - en implementación real sería más complejo
+                        vertices[i + 1] = vertices[i + 1] * (1 - influence) + 
+                                         this.getAverageHeight(x, z) * influence;
+                    }
+                }
+                
+                this.terrainGeometry.attributes.position.needsUpdate = true;
+                this.terrainGeometry.computeVertexNormals();
+            }
+
+            getAverageHeight(x, z) {
+                // Implementación básica - calcular altura promedio del área circundante
+                return 0; // Placeholder
+            }
+
+            createPlateau(centerPoint) {
+                // Crear una meseta plana en el área del pincel
+                const targetHeight = centerPoint.y + 3;
+                this.modifyToHeight(centerPoint, targetHeight);
+            }
+
+            createValley(centerPoint) {
+                // Crear un valle en el área del pincel
+                const targetHeight = centerPoint.y - 3;
+                this.modifyToHeight(centerPoint, targetHeight);
+            }
+
+            modifyToHeight(centerPoint, targetHeight) {
+                const vertices = this.terrainVertices;
+                
+                for (let i = 0; i < vertices.length; i += 3) {
+                    const x = vertices[i];
+                    const z = vertices[i + 2];
+                    
+                    const distance = this.calculateBrushDistance(x, z, centerPoint);
+                    const influence = this.calculateBrushInfluence(distance, this.brushSize);
+                    
+                    if (influence > 0) {
+                        vertices[i + 1] = THREE.MathUtils.lerp(
+                            vertices[i + 1], 
+                            targetHeight, 
+                            influence * 0.2
+                        );
+                    }
+                }
+                
+                this.terrainGeometry.attributes.position.needsUpdate = true;
+                this.terrainGeometry.computeVertexNormals();
+            }
+
+            flattenTerrain(centerPoint) {
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObject(this.terrain);
+                if (intersects.length > 0) {
+                    const targetHeight = intersects[0].point.y;
+                    this.modifyToHeight(centerPoint, targetHeight);
+                }
+            }
+
+            paintTerrain(centerPoint, textureType) {
+                const vertices = this.terrainVertices;
+                const resolution = this.terrainResolution;
+                const size = this.terrainSize;
+                const halfSize = size / 2;
+                
+                const textureColors = {
+                    'sand': [0.82, 0.71, 0.55],
+                    'grass': [0.48, 0.69, 0.31],
+                    'dirt': [0.54, 0.42, 0.27],
+                    'rock': [0.50, 0.50, 0.50],
+                    'snow': [0.95, 0.95, 0.95],
+                    'flower': [0.95, 0.60, 0.75],
+                    'forest': [0.13, 0.54, 0.13],
+                    'clay': [0.80, 0.52, 0.36]
+                };
+                
+                const targetColor = textureColors[textureType] || textureColors['sand'];
+                
+                for (let i = 0; i < vertices.length; i += 3) {
+                    const x = vertices[i];
+                    const z = vertices[i + 2];
+                    
+                    const gridX = Math.floor((x + halfSize) / size * resolution);
+                    const gridZ = Math.floor((z + halfSize) / size * resolution);
+                    const colorIndex = (gridZ * resolution + gridX) * 3;
+                    
+                    if (colorIndex >= 0 && colorIndex < this.terrainColors.length - 2) {
+                        const distance = this.calculateBrushDistance(x, z, centerPoint);
+                        const influence = this.calculateBrushInfluence(distance, this.brushSize) * 0.3;
+                        
+                        if (influence > 0) {
+                            // Interpolar hacia el color objetivo
+                            this.terrainColors[colorIndex] = THREE.MathUtils.lerp(
+                                this.terrainColors[colorIndex], targetColor[0], influence
+                            );
+                            this.terrainColors[colorIndex + 1] = THREE.MathUtils.lerp(
+                                this.terrainColors[colorIndex + 1], targetColor[1], influence
+                            );
+                            this.terrainColors[colorIndex + 2] = THREE.MathUtils.lerp(
+                                this.terrainColors[colorIndex + 2], targetColor[2], influence
+                            );
+                        }
+                    }
+                }
+                
+                this.terrainGeometry.attributes.color.needsUpdate = true;
+            }
+
+            addWaterSpring(centerPoint) {
+                // Crear un manantial de agua
+                const waterGeometry = new THREE.SphereGeometry(this.brushSize * 0.3, 8, 6);
+                const waterMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x2980b9, 
+                    transparent: true, 
+                    opacity: 0.7 
+                });
+                
+                const waterSpring = new THREE.Mesh(waterGeometry, waterMaterial);
+                waterSpring.position.set(centerPoint.x, this.waterLevel + 0.5, centerPoint.z);
+                waterSpring.name = "water_spring";
+                
+                this.scene.add(waterSpring);
+                
+                // También bajar el terreno alrededor para crear un estanque natural
+                this.modifyTerrainHeight(centerPoint, -this.brushIntensity * 0.2);
+            }
+
+            eraseTextures(centerPoint) {
+                // Restaurar textura de arena por defecto
+                this.paintTerrain(centerPoint, 'sand');
+            }
+
+            revealWaterAtPoint(x, z, depth) {
+                // Crear efecto de agua cuando se excava profundamente
+                if (Math.random() < 0.1) { // Solo ocasionalmente para rendimiento
+                    const bubbleGeometry = new THREE.SphereGeometry(0.2, 4, 4);
+                    const bubbleMaterial = new THREE.MeshBasicMaterial({ 
+                        color: 0x3498db, 
+                        transparent: true, 
+                        opacity: 0.6 
+                    });
+                    
+                    const bubble = new THREE.Mesh(bubbleGeometry, bubbleMaterial);
+                    bubble.position.set(x, this.waterLevel + Math.random(), z);
+                    
+                    this.waterParticles.add(bubble);
+                    
+                    // Remover después de un tiempo
+                    setTimeout(() => {
+                        this.waterParticles.remove(bubble);
+                    }, 2000 + Math.random() * 2000);
+                }
+            }
+
+            updateWaterLevel(level) {
+                this.waterLevel = level;
+                this.water.position.y = level;
+                document.getElementById('water-level-value').textContent = level.toFixed(1);
+                
+                // Actualizar visualización del nivel de agua
+                const visual = document.getElementById('water-level-visual');
+                const percent = ((level + 10) / 20) * 100;
+                visual.style.background = `linear-gradient(to top, #1e5799 ${percent}%, #2c3e50 ${percent}%)`;
+            }
+
+            loadTexturesLibrary() {
+                const textures = [
+                    { id: 'sand', name: '🏖️ Arena', color: '#d2b48c' },
+                    { id: 'grass', name: '🌿 Hierba', color: '#7bc043' },
+                    { id: 'dirt', name: '🟫 Tierra', color: '#8a6642' },
+                    { id: 'rock', name: '🪨 Roca', color: '#808080' },
+                    { id: 'snow', name: '❄️ Nieve', color: '#ffffff' },
+                    { id: 'flower', name: '🌷 Flores', color: '#ff69b4' },
+                    { id: 'forest', name: '🌲 Bosque', color: '#228b22' },
+                    { id: 'clay', name: '🟠 Arcilla', color: '#cc7755' }
+                ];
+
+                this.displayTexturesPalette(textures);
+            }
+
+            displayTexturesPalette(textures) {
+                const palette = document.getElementById('texture-palette');
+                palette.innerHTML = '';
+
+                textures.forEach(texture => {
+                    const button = document.createElement('button');
+                    button.className = 'texture-btn';
+                    button.textContent = texture.name;
+                    button.style.backgroundColor = texture.color;
+                    button.style.color = this.getContrastColor(texture.color);
+                    button.onclick = () => {
+                        this.currentTexture = texture.id;
+                        document.querySelectorAll('.texture-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        button.classList.add('active');
+                    };
+                    palette.appendChild(button);
+                });
+
+                if (palette.firstChild) {
+                    palette.firstChild.classList.add('active');
+                }
+            }
+
+            loadObjectsLibrary() {
+                const objectsLibrary = {
+                    animals: [
+                        { id: 'lion', name: '🦁 León' },
+                        { id: 'elephant', name: '🐘 Elefante' },
+                        { id: 'bird', name: '🐦 Pájaro' }
+                    ],
+                    people: [
+                        { id: 'child', name: '👶 Niño' },
+                        { id: 'adult', name: '👨 Adulto' },
+                        { id: 'elder', name: '👴 Anciano' }
+                    ],
+                    professions: [
+                        { id: 'doctor', name: '👨‍⚕️ Médico' },
+                        { id: 'firefighter', name: '👨‍🚒 Bombero' },
+                        { id: 'police', name: '👮 Policía' }
+                    ],
+                    structures: [
+                        { id: 'house', name: '🏠 Casa' },
+                        { id: 'castle', name: '🏰 Castillo' },
+                        { id: 'bridge', name: '🌉 Puente' }
+                    ],
+                    nature: [
+                        { id: 'tree', name: '🌳 Árbol' },
+                        { id: 'rock', name: '🪨 Roca' },
+                        { id: 'flower', name: '🌷 Flor' }
+                    ]
+                };
+
+                this.objectsLibrary = objectsLibrary;
+                this.displayObjectsPalette('animals');
+            }
+
+            displayObjectsPalette(category) {
+                const palette = document.getElementById('objects-palette');
+                palette.innerHTML = '';
+
+                const objects = this.objectsLibrary[category];
+                objects.forEach(obj => {
+                    const button = document.createElement('button');
+                    button.className = 'obj-btn';
+                    button.textContent = obj.name;
+                    button.onclick = () => {
+                        this.currentObject = obj.id;
+                        this.currentTool = 'object';
+                        this.updateActiveTool();
+                        this.createObjectPreview(obj.id);
+                    };
+                    palette.appendChild(button);
+                });
+            }
+
+            getContrastColor(hexcolor) {
+                const r = parseInt(hexcolor.substr(1, 2), 16);
+                const g = parseInt(hexcolor.substr(3, 2), 16);
+                const b = parseInt(hexcolor.substr(5, 2), 16);
+                const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+                return brightness > 128 ? '#2c3e50' : '#ecf0f1';
+            }
+
+            setupEventListeners() {
+                // Herramientas
+                document.querySelectorAll('.tool-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.currentTool = e.target.closest('.tool-btn').dataset.tool;
+                        this.updateActiveTool();
+                    });
+                });
+
+                // Categorías de objetos
+                document.querySelectorAll('.category-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const category = e.target.dataset.category;
+                        this.currentCategory = category;
+                        document.querySelectorAll('.category-btn').forEach(b => {
+                            b.classList.remove('active');
+                        });
+                        e.target.classList.add('active');
+                        this.displayObjectsPalette(category);
+                    });
+                });
+
+                // Controles del pincel
+                document.getElementById('brush-size').addEventListener('input', (e) => {
+                    this.brushSize = parseInt(e.target.value);
+                    document.getElementById('brush-size-value').textContent = this.brushSize;
+                });
+
+                document.getElementById('brush-intensity').addEventListener('input', (e) => {
+                    this.brushIntensity = parseInt(e.target.value);
+                    document.getElementById('brush-intensity-value').textContent = this.brushIntensity;
+                });
+
+                document.getElementById('brush-shape').addEventListener('change', (e) => {
+                    this.brushShape = e.target.value;
+                });
+
+                // Nivel del agua
+                document.getElementById('water-level').addEventListener('input', (e) => {
+                    this.updateWaterLevel(parseFloat(e.target.value));
+                });
+
+                // Redimensionar
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                // Actualizar nivel de agua inicial
+                this.updateWaterLevel(this.waterLevel);
+            }
+
+            updateActiveTool() {
+                document.querySelectorAll('.tool-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector(`[data-tool="${this.currentTool}"]`).classList.add('active');
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Animación sutil de las partículas de agua
+                this.waterParticles.children.forEach((particle, index) => {
+                    particle.position.y += 0.01;
+                    particle.scale.multiplyScalar(0.998);
+                });
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // INICIAR LA APLICACIÓN
+        const terrainEditor = new AdvancedTerrainEditor();
+    </script>
+</body>
+</html>
